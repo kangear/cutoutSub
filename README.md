@@ -8,7 +8,8 @@ pip install -r requirements.txt
 python main.py
 ```
 
-```输出例子
+# 输出例子
+```
 Text: and broke up with you?
 start_time: 53.2532, end_time: 54.8548
 Confidence: 1.0
