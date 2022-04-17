@@ -153,3 +153,102 @@ and broke up with you?
 - No.
 
 ```
+
+案例：两次一样
+```log
+Text: -Interesting.
+start_time: 44.6446, end_time: 45.045
+Confidence: 0.9774123430252075
+Time offset for the first frame: 44.6446
+Rotated Bounding Box Vertices:
+	Vertex.x: 0.3583333194255829, Vertex.y: 0.735156238079071
+	Vertex.x: 0.6402698755264282, Vertex.y: 0.7363437414169312
+	Vertex.x: 0.6398746967315674, Vertex.y: 0.7660304307937622
+	Vertex.x: 0.35793814063072205, Vertex.y: 0.7648429274559021
+
+Text: - Interesting.
+时间太短<0.2s
+非字幕
+```
+
+案例2:切镜头导致字幕消失快（某一行出现两次，冲掉了上一次）
+```
+Text: - And once it does, it
+start_time: 23.3233, end_time: 24.3243
+Confidence: 1.0
+Time offset for the first frame: 23.3233
+Rotated Bounding Box Vertices:
+	Vertex.x: 0.27916666865348816, Vertex.y: 0.706250011920929
+	Vertex.x: 0.7222092151641846, Vertex.y: 0.7081577181816101
+	Vertex.x: 0.7219115495681763, Vertex.y: 0.7300320863723755
+	Vertex.x: 0.27886897325515747, Vertex.y: 0.7281243801116943
+
+Text: drives everyone mad.
+start_time: 23.3233, end_time: 25.4254
+Confidence: 1.0
+Time offset for the first frame: 23.3233
+Rotated Bounding Box Vertices:
+	Vertex.x: 0.26249998807907104, Vertex.y: 0.737500011920929
+	Vertex.x: 0.736081600189209, Vertex.y: 0.740472674369812
+	Vertex.x: 0.7356011867523193, Vertex.y: 0.7646898627281189
+	Vertex.x: 0.2620195746421814, Vertex.y: 0.7617172598838806
+
+Text: And once it does, it
+start_time: 24.4244, end_time: 24.6246
+Confidence: 0.9871087074279785
+Time offset for the first frame: 24.4244
+Rotated Bounding Box Vertices:
+	Vertex.x: 0.27916666865348816, Vertex.y: 0.706250011920929
+	Vertex.x: 0.7222052216529846, Vertex.y: 0.7084335088729858
+	Vertex.x: 0.7218523025512695, Vertex.y: 0.7310888767242432
+	Vertex.x: 0.27881377935409546, Vertex.y: 0.7289053797721863
+时间太短<0.2s
+非字幕
+```
+
+案例3：时间一样，这个判断正确了
+```
+Text: ISAACASIM
+start_time: 33.8338, end_time: 33.8338
+Confidence: 0.8715739846229553
+Time offset for the first frame: 33.8338
+Rotated Bounding Box Vertices:
+	Vertex.x: 0.6986111402511597, Vertex.y: 0.8671875
+	Vertex.x: 0.81060391664505, Vertex.y: 0.9706051349639893
+	Vertex.x: 0.7252009510993958, Vertex.y: 0.9998677372932434
+	Vertex.x: 0.6132081747055054, Vertex.y: 0.8964501619338989
+时间太短<0.2s
+非字幕
+```
+
+案例4：同时出现的字幕，时间却不一样
+```
+Text: - I don't need a story set
+start_time: 38.3383, end_time: 39.6396
+Confidence: 1.0
+Time offset for the first frame: 38.3383
+Rotated Bounding Box Vertices:
+	Vertex.x: 0.23749999701976776, Vertex.y: 0.7054687738418579
+	Vertex.x: 0.7596940398216248, Vertex.y: 0.70852130651474
+	Vertex.x: 0.7592321634292603, Vertex.y: 0.733519971370697
+	Vertex.x: 0.23703815042972565, Vertex.y: 0.7304673790931702
+
+Text: on some outer space planet
+start_time: 38.3383, end_time: 41.3413
+Confidence: 1.0
+Time offset for the first frame: 38.3383
+Rotated Bounding Box Vertices:
+	Vertex.x: 0.2013888955116272, Vertex.y: 0.739062488079071
+	Vertex.x: 0.8027777671813965, Vertex.y: 0.739062488079071
+	Vertex.x: 0.8027777671813965, Vertex.y: 0.7632812261581421
+	Vertex.x: 0.2013888955116272, Vertex.y: 0.7632812261581421
+```
+
+解决方案：合成一行之后，以大的为准
+```python
+# 结束时间取最大
+new_end_time_timedelta = datetime.timedelta(seconds=end_time.seconds, microseconds=end_time.microseconds)
+if sub_pre.endtime < new_end_time_timedelta:
+    sub_pre.endtime = new_end_time_timedelta,
+```
+其实时间段重叠应该也相应处理。

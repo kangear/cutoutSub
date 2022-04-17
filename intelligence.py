@@ -35,6 +35,12 @@ def get_vertex_y_0(text_segment):
     return frame.rotated_bounding_box.vertices[0].y
 
 def make_sentences(subs, text_annotation, old_text_annotation):
+    '''
+    :param subs:
+    :param text_annotation:
+    :param old_text_annotation:
+    :return:
+    '''
     # Get the first text segment
     # 位置偏，显示时间小于1s，均不要
     # 不应该只取第0个段落，应该foreach一下
@@ -49,11 +55,15 @@ def make_sentences(subs, text_annotation, old_text_annotation):
     if old_text_annotation is not None:
         pre_text_segment = old_text_annotation.segments[0]
         pre_start_time = pre_text_segment.segment.start_time_offset
+        pre_end_time = pre_text_segment.segment.end_time_offset
         vertex_y_0_pre = get_vertex_y_0(pre_text_segment)
         # old and new is same && y is diff
+        # TODO: 如果完全嵌套，判断是否完全包含，如果包含则舍掉
+        # TODO: 相等或者重叠
         if start_time.seconds == pre_start_time.seconds:
             sub_pre = subs[idx_pre]
             text = sub_pre.content
+            # 将两行字幕合成一行，时间换成大的
             if vertex_y_0_cur > vertex_y_0_pre:
                 text = sub_pre.content + " " + text_annotation.text
             else:
@@ -66,6 +76,10 @@ def make_sentences(subs, text_annotation, old_text_annotation):
     return subs
 
 def check_sub(text_annotation):
+    '''
+    :param text_annotation:
+    :return:
+    '''
     # 如果没有空格，则不是
     text = text_annotation.text
     # if text.find(" ") == -1:
@@ -88,12 +102,31 @@ def check_sub(text_annotation):
         print("时间太短<0.2s")
         return False
 
+    # if end_time.seconds - start_time.seconds > 10:
+    #     print("时间太长>10s")
+    #     return False
     return True
 
 # 获取列表的第二个元素
 def take_start_time(text_annotation):
     start_time = text_annotation.segments[0].segment.start_time_offset
     return start_time.seconds
+
+class Rect:
+    def __init__(self, left=0, top=0, right=0, bottom=0):
+        self.left = left
+        self.top = top
+        self.right = right
+        self.bottom = bottom
+
+
+def is_rect(vertices):
+    '''
+    会有xie的吗？，如果有过滤掉
+    :param vertices:
+    :return:
+    '''
+    return True
 
 def detect_text(path):
     """Detect text in a local video."""
@@ -123,18 +156,16 @@ def detect_text(path):
     subs = []
     index = 0
     vertex_y_list = []
+    sub_height_arr = []
     dis_duration = []
+    rectes = []
     # 处理了每一句话
 
     # 排序
     annotation_result.text_annotations.sort(key=take_start_time)
 
-    old_text_annotation = None
     for text_annotation in annotation_result.text_annotations:
         print("\nText: {}".format(text_annotation.text))
-        is_sub = check_sub(text_annotation)
-        if is_sub is not True:
-            continue
         # Get the first text segment
         text_segment = text_annotation.segments[0]
         start_time = text_segment.segment.start_time_offset
@@ -159,24 +190,85 @@ def detect_text(path):
         print("Rotated Bounding Box Vertices:")
         for vertex in frame.rotated_bounding_box.vertices:
             print("\tVertex.x: {}, Vertex.y: {}".format(vertex.x, vertex.y))
-            vertex_y_list.append(vertex.y)
-        dis_duration.append(end_time.seconds - start_time.seconds)
+
+        if check_sub(text_annotation) is not True:
+            print("文字，显示时长判断不通过，舍去")
+            continue
+
+        if is_rect(frame.rotated_bounding_box.vertices) is not True:
+            print("非矩形，舍去")
+            continue
+
+        rect = Rect(frame.rotated_bounding_box.vertices[0].x,
+                    frame.rotated_bounding_box.vertices[0].y,
+                    frame.rotated_bounding_box.vertices[3].x,
+                    frame.rotated_bounding_box.vertices[3].y,)
+        rectes.append(rect)
+
+        #     vertex_y_list.append(vertex.y)
+        #     # sub_height_arr.append()
+        #     index += 1
+        # dis_duration.append(end_time.seconds - start_time.seconds)
+        # is_sub = check_sub(text_annotation)
+        # if is_sub is not True:
+        #     print("非字幕")
+        #     continue
+        # subs = make_sentences(subs, text_annotation, old_text_annotation)
+        # old_text_annotation = text_annotation
+
+    # TODO: 第二轮
+    # 平均高度
+    avg_hight = sum((r.bottom - r.top) for r in rectes) / float(len(rectes))
+    # 平均时长
+    # 平均Y值
+    # vertex_y_avg = sum(vertex_y_list) / float(len(vertex_y_list))
+    # dis_duration_avg = sum(dis_duration) / float(len(dis_duration))
+    print('avg_hight: ' + str(avg_hight))
+
+    old_text_annotation = None
+    for text_annotation in annotation_result.text_annotations:
+        print("\nText: {}".format(text_annotation.text))
+        # Get the first text segment
+        text_segment = text_annotation.segments[0]
+        start_time = text_segment.segment.start_time_offset
+        end_time = text_segment.segment.end_time_offset
+        print(
+            "start_time: {}, end_time: {}".format(
+                start_time.seconds + start_time.microseconds * 1e-6,
+                end_time.seconds + end_time.microseconds * 1e-6,
+            )
+        )
+
+        print("Confidence: {}".format(text_segment.confidence))
+
+        # Show the result for the first frame in this segment.
+        frame = text_segment.frames[0]
+        time_offset = frame.time_offset
+        print(
+            "Time offset for the first frame: {}".format(
+                time_offset.seconds + time_offset.microseconds * 1e-6
+            )
+        )
+        print("Rotated Bounding Box Vertices:")
+        for vertex in frame.rotated_bounding_box.vertices:
+            print("\tVertex.x: {}, Vertex.y: {}".format(vertex.x, vertex.y))
+
+        rect = Rect(frame.rotated_bounding_box.vertices[0].x,
+                    frame.rotated_bounding_box.vertices[0].y,
+                    frame.rotated_bounding_box.vertices[3].x,
+                    frame.rotated_bounding_box.vertices[3].y, )
+
+        hight = rect.bottom - rect.top
+        hight_abs = abs(hight - avg_hight)
+        if hight_abs > 0.1:
+            print("高度不合法，舍去: 差值 " + str(hight_abs))
+            continue
+        is_sub = check_sub(text_annotation)
+        if is_sub is not True:
+            print("非字幕")
+            continue
         subs = make_sentences(subs, text_annotation, old_text_annotation)
         old_text_annotation = text_annotation
-    try:
-        # vertex_y_avg = sum(vertex_y_list) / float(len(vertex_y_list))
-        # dis_duration_avg = sum(dis_duration) / float(len(dis_duration))
-        # print('vertex_y_avg: ' + str(vertex_y_avg) + " dis_duration: " + str(dis_duration_avg))
-        # sql.update_vi_args(jobid, str(dis_duration_avg), str(vertex_y_avg))
-        pass
-        # [0]---------[1]
-        #  |           |
-        #  |           |
-        # [3]---------[4]
-        # handle2(annotation_result, vertex_y_avg, dis_duration_avg)
-    except Exception as e:
-        print(e)
-        print(traceback.format_exc())
 
     ret = None
     if len(subs) > 0:
