@@ -84,8 +84,8 @@ def check_sub(text_annotation):
         print("位置不正确")
         return False
 
-    if end_time.seconds - start_time.seconds < 0.5:
-        print("时间太短<0.5s")
+    if end_time.seconds - start_time.seconds < 0.2:
+        print("时间太短<0.2s")
         return False
 
     return True
