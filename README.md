@@ -8,6 +8,17 @@ pip install -r requirements.txt
 python main.py
 ```
 
+# 效果
+![My animated logo](1.png)
+
+# 存在的问题
+算法好大佬可以give me hand，谷歌云每人每月给1000分钟免费时长，可以自己玩一下。16个小时够用了。
+
+1. 消失过早
+2. 镜头切换时不准确
+3. 图像上有其他字符容易干扰
+4. 原理就是Video AI将视频中所有文字都识别出来了，如何从中挑选出【字幕】
+
 # 输出例子
 ```
 Text: and broke up with you?
